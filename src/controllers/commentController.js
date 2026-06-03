@@ -1,5 +1,6 @@
 import Comment from '../models/Comment.js';
 import Issue from '../models/Issue.js';
+import User from '../models/User.js';
 
 // POST /comments
 export const createComment = async (req, res, next) => {
@@ -64,6 +65,7 @@ export const getAllComments = async (req, res, next) => {
   }
 };
 
+
 // GET /comments/:id
 export const getCommentById = async (req, res, next) => {
   try {
@@ -82,10 +84,20 @@ export const getCommentById = async (req, res, next) => {
       });
     }
 
+    const userObj = await User.findOne({ userId: comment.userId });
+    const issueObj = await Issue.findOne({ issueId: comment.issueId });
+
     return res.status(200).json({
       success: true,
       message: 'Comment fetched successfully',
-      data: comment
+      data: {
+        _id: comment._id,
+        commentId: comment.commentId,
+        message: comment.message,
+        createdAt: comment.createdAt,
+        user: userObj || { userId: comment.userId },
+        issue: issueObj || { issueId: comment.issueId }
+      }
     });
   } catch (error) {
     next(error);

@@ -32,14 +32,16 @@ app.get('/health', async (req, res) => {
     
     return res.status(200).json({
       success: true,
-      database: isConnected,
-      documentCount
+      message: "Database connected successfully",
+      data: {
+        database: isConnected,
+        documentCount
+      }
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      database: 'disconnected',
-      error: error.message
+      message: error.message
     });
   }
 });
