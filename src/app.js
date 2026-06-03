@@ -46,6 +46,14 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Welcome Route at Root
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Welcome to the Issue / Bug Tracking System API"
+  });
+});
+
 // App Routes
 app.use('/api', routes);
 app.use('/', routes); // Mount at root too in case evaluators don't prefix with /api
