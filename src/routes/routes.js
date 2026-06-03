@@ -48,8 +48,8 @@ router.get('/comments/:id', verifyToken, commentController.getCommentById);
 router.delete('/comments/:id', verifyToken, commentController.deleteComment);
 
 // --- Analytics & Aggregations ---
-router.get('/analytics/issues', verifyToken, analyticsController.getIssueAnalytics);
-router.get('/analytics/projects', verifyToken, analyticsController.getProjectAnalytics);
-router.get('/analytics/developers', verifyToken, analyticsController.getDeveloperAnalytics);
+router.get('/analytics/issues', verifyToken, requireRole(['admin', 'manager']), analyticsController.getIssueAnalytics);
+router.get('/analytics/projects', verifyToken, requireRole(['admin', 'manager']), analyticsController.getProjectAnalytics);
+router.get('/analytics/developers', verifyToken, requireRole(['admin', 'manager']), analyticsController.getDeveloperAnalytics);
 
 export default router;

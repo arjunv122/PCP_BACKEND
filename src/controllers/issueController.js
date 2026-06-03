@@ -196,6 +196,13 @@ export const updateIssue = async (req, res, next) => {
     const userRole = req.user.role;
     const userId = req.user.userId;
 
+    if (userRole === 'tester') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden. Testers cannot update issues directly.'
+      });
+    }
+
     const issue = await Issue.findOne({
       $or: [
         { issueId: id },
@@ -218,6 +225,16 @@ export const updateIssue = async (req, res, next) => {
     }
 
     const updates = req.body;
+
+    if (updates.projectId && updates.projectId !== issue.projectId) {
+      const projectExists = await Project.findOne({ projectId: updates.projectId });
+      if (!projectExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Project with ID '${updates.projectId}' does not exist.`
+        });
+      }
+    }
 
     if (updates.title && updates.title !== issue.title) {
       const projId = updates.projectId || issue.projectId;
@@ -481,7 +498,7 @@ export const updateIssueStatus = async (req, res, next) => {
     }
 
     if (newStatus === 'testing') {
-      if (userRole === 'developer' && issue.assignedTo !== userId) {
+      if (userRole !== 'admin' && userRole !== 'manager' && (userRole !== 'developer' || issue.assignedTo !== userId)) {
         return res.status(403).json({
           success: false,
           message: 'Forbidden. Only the assigned developer can transition the issue to testing.'

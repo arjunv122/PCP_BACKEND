@@ -64,10 +64,15 @@ export const getProjectAnalytics = async (req, res, next) => {
       }
     });
 
+    const activeCount = projects.filter(p => p.status === 'active').length;
+
     return res.status(200).json({
       success: true,
       message: 'Project analytics fetched successfully',
-      data: projectWiseData
+      data: {
+        activeCount,
+        projectWiseCount: projectWiseData
+      }
     });
   } catch (error) {
     next(error);
