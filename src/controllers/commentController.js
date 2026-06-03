@@ -1,7 +1,7 @@
 import Comment from '../models/Comment.js';
 import Issue from '../models/Issue.js';
 
-// Q9 -- Comment APIs: POST /comments
+// POST /comments
 export const createComment = async (req, res, next) => {
   try {
     const { issueId, message } = req.body;
@@ -14,7 +14,6 @@ export const createComment = async (req, res, next) => {
       });
     }
 
-    // Verify issue exists
     const issueExists = await Issue.findOne({ issueId });
     if (!issueExists) {
       return res.status(400).json({
@@ -35,7 +34,7 @@ export const createComment = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Comment added successfully',
       data: newComment
     });
   } catch (error) {
@@ -43,7 +42,7 @@ export const createComment = async (req, res, next) => {
   }
 };
 
-// Q9 -- Comment APIs: GET /comments (with optional issueId filter)
+// GET /comments
 export const getAllComments = async (req, res, next) => {
   try {
     const { issueId } = req.query;
@@ -57,7 +56,7 @@ export const getAllComments = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Comments fetched successfully',
       data: comments
     });
   } catch (error) {
@@ -65,7 +64,7 @@ export const getAllComments = async (req, res, next) => {
   }
 };
 
-// Q9 -- Comment APIs: GET /comments/:id
+// GET /comments/:id
 export const getCommentById = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -85,7 +84,7 @@ export const getCommentById = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Comment fetched successfully',
       data: comment
     });
   } catch (error) {
@@ -93,7 +92,7 @@ export const getCommentById = async (req, res, next) => {
   }
 };
 
-// Q9 -- Comment APIs: DELETE /comments/:id
+// DELETE /comments/:id
 export const deleteComment = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -114,7 +113,6 @@ export const deleteComment = async (req, res, next) => {
       });
     }
 
-    // Only allow admin, manager, or the owner who created it to delete comments
     if (userRole !== 'admin' && userRole !== 'manager' && comment.userId !== userId) {
       return res.status(403).json({
         success: false,
@@ -124,10 +122,10 @@ export const deleteComment = async (req, res, next) => {
 
     await Comment.findByIdAndDelete(comment._id);
 
+    // No data block in expected response of DELETE comment
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      data: comment
+      message: 'Comment deleted successfully'
     });
   } catch (error) {
     next(error);

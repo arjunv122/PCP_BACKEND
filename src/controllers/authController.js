@@ -4,7 +4,7 @@ import User from '../models/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkeyforbugtracker';
 
-// Q1 -- Register API (POST /auth/register)
+// POST /auth/register
 export const register = async (req, res, next) => {
   try {
     const { userId, name, email, password, role, department } = req.body;
@@ -23,7 +23,6 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // Check duplicate email or userId
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
       return res.status(400).json({
@@ -40,7 +39,6 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -59,7 +57,7 @@ export const register = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Operation successful',
+      message: 'User registered successfully',
       data: userObj
     });
   } catch (error) {
@@ -67,7 +65,7 @@ export const register = async (req, res, next) => {
   }
 };
 
-// Q2 -- Login API (POST /auth/login)
+// POST /auth/login and POST /public/token
 export const login = async (req, res, next) => {
   try {
     const { email, password, studentId } = req.body;
@@ -113,19 +111,16 @@ export const login = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      token, // Return at root for /public/token compatibility
-      data: {
-        token,
-        user: userObj
-      }
+      message: 'Login successful',
+      token,
+      data: userObj
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Q3 -- Current User API (GET /auth/me)
+// GET /auth/me
 export const getMe = async (req, res, next) => {
   try {
     const user = await User.findOne({ userId: req.user.userId }).select('-password');
@@ -138,7 +133,7 @@ export const getMe = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Authenticated user fetched successfully',
       data: user
     });
   } catch (error) {

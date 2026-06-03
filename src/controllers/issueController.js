@@ -3,18 +3,16 @@ import Project from '../models/Project.js';
 import User from '../models/User.js';
 import ActivityLog from '../models/ActivityLog.js';
 
-// Helper to generate unique ID for activity log
 const generateLogId = () => {
   return 'LOG' + Date.now() + Math.floor(Math.random() * 1000);
 };
 
-// Q8 -- Issue APIs: POST /issues
+// POST /issues
 export const createIssue = async (req, res, next) => {
   try {
     const { issueId, projectId, assignedTo, reportedBy, title, description, priority, severity, status, dueDate } = req.body;
     const userRole = req.user.role;
 
-    // Testers can report bugs. Admin/Manager can also do it. Developers can only update assigned issues.
     if (userRole === 'developer') {
       return res.status(403).json({
         success: false,
@@ -29,7 +27,6 @@ export const createIssue = async (req, res, next) => {
       });
     }
 
-    // Verify Project exists
     const projectExists = await Project.findOne({ projectId });
     if (!projectExists) {
       return res.status(400).json({
@@ -38,7 +35,6 @@ export const createIssue = async (req, res, next) => {
       });
     }
 
-    // Verify Reporter user exists
     const reporterExists = await User.findOne({ userId: reportedBy });
     if (!reporterExists) {
       return res.status(400).json({
@@ -47,9 +43,7 @@ export const createIssue = async (req, res, next) => {
       });
     }
 
-    // Verify Assignee if provided
     if (assignedTo) {
-      // Only managers/admins can assign issues
       if (userRole !== 'admin' && userRole !== 'manager') {
         return res.status(403).json({
           success: false,
@@ -65,7 +59,6 @@ export const createIssue = async (req, res, next) => {
       }
     }
 
-    // Check duplicate issueId
     const existingIssueId = await Issue.findOne({ issueId });
     if (existingIssueId) {
       return res.status(400).json({
@@ -74,7 +67,6 @@ export const createIssue = async (req, res, next) => {
       });
     }
 
-    // Check duplicate issue title in the same project (case-insensitive)
     const duplicateTitle = await Issue.findOne({
       projectId,
       title: { $regex: `^${title.trim()}$`, $options: 'i' }
@@ -86,7 +78,6 @@ export const createIssue = async (req, res, next) => {
       });
     }
 
-    // Create the issue
     const newIssue = await Issue.create({
       issueId,
       projectId,
@@ -100,7 +91,6 @@ export const createIssue = async (req, res, next) => {
       dueDate: dueDate ? new Date(dueDate) : null
     });
 
-    // Create activity log
     await ActivityLog.create({
       logId: generateLogId(),
       issueId: newIssue.issueId,
@@ -113,7 +103,7 @@ export const createIssue = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Issue created successfully',
       data: newIssue
     });
   } catch (error) {
@@ -121,13 +111,12 @@ export const createIssue = async (req, res, next) => {
   }
 };
 
-// Q8, Q12, Q14 -- GET /issues (with filter, search, pagination)
+// GET /issues (Filtering, Search, Pagination)
 export const getAllIssues = async (req, res, next) => {
   try {
     const { priority, status, severity, page = 1, limit = 10, search } = req.query;
     const filter = {};
 
-    // 1. Apply filters
     if (priority) {
       filter.priority = priority.toString().trim().toLowerCase();
     }
@@ -138,7 +127,6 @@ export const getAllIssues = async (req, res, next) => {
       filter.severity = severity.toString().trim().toLowerCase();
     }
 
-    // 2. Apply search
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -147,12 +135,6 @@ export const getAllIssues = async (req, res, next) => {
       ];
     }
 
-    // Role-based restrictions: Developers can only view issues assigned to them, or developers can see all but edit only assigned?
-    // Let's check Image 5: "Developer Module: view assigned issues, update status...".
-    // To allow the developer to see all but focus, or if we filter by assignedTo for developers if a query param is passed.
-    // The instructions say "Developers can update assigned issues...". Let's allow them to fetch all, but if we want to support developer view easily.
-
-    // 3. Paginate
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
@@ -163,23 +145,23 @@ export const getAllIssues = async (req, res, next) => {
       .skip(skip)
       .limit(limitNum);
 
+    const isFiltered = (priority !== undefined || status !== undefined || severity !== undefined);
+
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      data: issues,
-      pagination: {
-        total: totalCount,
-        page: pageNum,
-        limit: limitNum,
-        pages: Math.ceil(totalCount / limitNum)
-      }
+      message: isFiltered ? 'Issues filtered successfully' : 'Issues fetched successfully',
+      page: pageNum,
+      limit: limitNum,
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / limitNum),
+      data: issues
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Q8 -- Issue APIs: GET /issues/:id
+// GET /issues/:id
 export const getIssueById = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -199,7 +181,7 @@ export const getIssueById = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Issue fetched successfully',
       data: issue
     });
   } catch (error) {
@@ -207,7 +189,7 @@ export const getIssueById = async (req, res, next) => {
   }
 };
 
-// Q8 -- Issue APIs: PATCH /issues/:id (General Update)
+// PATCH /issues/:id (General Update)
 export const updateIssue = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -228,7 +210,6 @@ export const updateIssue = async (req, res, next) => {
       });
     }
 
-    // Workflow Rule: Resolved issues cannot be edited directly
     if (issue.status === 'resolved') {
       return res.status(400).json({
         success: false,
@@ -238,7 +219,6 @@ export const updateIssue = async (req, res, next) => {
 
     const updates = req.body;
 
-    // Check duplicate issue title in the same project if title is updated
     if (updates.title && updates.title !== issue.title) {
       const projId = updates.projectId || issue.projectId;
       const duplicateTitle = await Issue.findOne({
@@ -254,7 +234,6 @@ export const updateIssue = async (req, res, next) => {
       }
     }
 
-    // Role restrictions: Developers can only update assigned issues
     if (userRole === 'developer' && issue.assignedTo !== userId) {
       return res.status(403).json({
         success: false,
@@ -262,7 +241,6 @@ export const updateIssue = async (req, res, next) => {
       });
     }
 
-    // Only managers/admins can change priority
     if (updates.priority && updates.priority !== issue.priority) {
       if (userRole !== 'admin' && userRole !== 'manager') {
         return res.status(403).json({
@@ -272,7 +250,6 @@ export const updateIssue = async (req, res, next) => {
       }
     }
 
-    // Closed issues cannot be reassigned
     if (issue.status === 'closed' && updates.assignedTo !== undefined && updates.assignedTo !== issue.assignedTo) {
       return res.status(400).json({
         success: false,
@@ -280,7 +257,6 @@ export const updateIssue = async (req, res, next) => {
       });
     }
 
-    // Only managers/admins can assign issues
     if (updates.assignedTo !== undefined && updates.assignedTo !== issue.assignedTo) {
       if (userRole !== 'admin' && userRole !== 'manager') {
         return res.status(403).json({
@@ -299,7 +275,6 @@ export const updateIssue = async (req, res, next) => {
       }
     }
 
-    // Apply updates
     const oldStatus = issue.status;
     const oldAssignedTo = issue.assignedTo;
 
@@ -316,7 +291,6 @@ export const updateIssue = async (req, res, next) => {
 
     await issue.save();
 
-    // Create log if status or assignment changed
     if (oldStatus !== issue.status || oldAssignedTo !== issue.assignedTo) {
       const action = oldAssignedTo !== issue.assignedTo ? 'assigned' : 'updated';
       await ActivityLog.create({
@@ -332,7 +306,7 @@ export const updateIssue = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Issue updated successfully',
       data: issue
     });
   } catch (error) {
@@ -340,7 +314,7 @@ export const updateIssue = async (req, res, next) => {
   }
 };
 
-// Q8 -- Issue APIs: DELETE /issues/:id
+// DELETE /issues/:id
 export const deleteIssue = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -358,24 +332,23 @@ export const deleteIssue = async (req, res, next) => {
       });
     }
 
+    // No data block in expected response of DELETE issue
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      data: issue
+      message: 'Issue deleted successfully'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Q10 -- Assign Issue: PATCH /issues/:id/assign
+// PATCH /issues/:id/assign
 export const assignIssue = async (req, res, next) => {
   try {
     const id = req.params.id;
     const { assignedTo } = req.body;
     const userRole = req.user.role;
 
-    // Only managers and admins can assign issues
     if (userRole !== 'admin' && userRole !== 'manager') {
       return res.status(403).json({
         success: false,
@@ -397,7 +370,6 @@ export const assignIssue = async (req, res, next) => {
       });
     }
 
-    // Closed issues cannot be reassigned
     if (issue.status === 'closed') {
       return res.status(400).json({
         success: false,
@@ -405,10 +377,10 @@ export const assignIssue = async (req, res, next) => {
       });
     }
 
-    // Verify user exists if assignedTo is not null/empty
+    let assigneeUser = null;
     if (assignedTo) {
-      const userExists = await User.findOne({ userId: assignedTo });
-      if (!userExists) {
+      assigneeUser = await User.findOne({ userId: assignedTo });
+      if (!assigneeUser) {
         return res.status(400).json({
           success: false,
           message: `User '${assignedTo}' does not exist.`
@@ -420,7 +392,6 @@ export const assignIssue = async (req, res, next) => {
     issue.assignedTo = assignedTo || null;
     await issue.save();
 
-    // Create log
     await ActivityLog.create({
       logId: generateLogId(),
       issueId: issue.issueId,
@@ -431,17 +402,24 @@ export const assignIssue = async (req, res, next) => {
       timestamp: new Date()
     });
 
+    // Format response exactly as contract expects
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      data: issue
+      message: 'Issue assigned successfully',
+      data: {
+        issueId: issue.issueId,
+        assignedTo: assigneeUser ? {
+          _id: assigneeUser._id.toString(),
+          name: assigneeUser.name
+        } : null
+      }
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Q11 -- Update Issue Status: PATCH /issues/:id/status
+// PATCH /issues/:id/status
 export const updateIssueStatus = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -479,18 +457,7 @@ export const updateIssueStatus = async (req, res, next) => {
     }
 
     const oldStatus = issue.status;
-    if (oldStatus === newStatus) {
-      return res.status(200).json({
-        success: true,
-        message: 'Operation successful',
-        data: issue
-      });
-    }
 
-    // Rule: Resolved issues cannot be edited directly (which includes changing status through here, unless reassigned or re-resolved, wait. Developers can change status of assigned issues. Let's make sure that if it is resolved, only managers/admins can move it to closed or open, or developers can move it to in-progress if testing failed. Let's block direct edits of resolved issues except for status changes through this specific status endpoint).
-    
-    // Rule: Closed issues cannot move back without reopen.
-    // Reopen means changing status from 'closed' to 'open'. Only managers/admins can do this.
     if (oldStatus === 'closed') {
       if (newStatus !== 'open') {
         return res.status(400).json({
@@ -506,7 +473,6 @@ export const updateIssueStatus = async (req, res, next) => {
       }
     }
 
-    // Rule: Testers cannot close issues directly
     if (newStatus === 'closed' && userRole === 'tester') {
       return res.status(403).json({
         success: false,
@@ -514,7 +480,6 @@ export const updateIssueStatus = async (req, res, next) => {
       });
     }
 
-    // Rule: Only assigned developer can move issue to testing
     if (newStatus === 'testing') {
       if (userRole === 'developer' && issue.assignedTo !== userId) {
         return res.status(403).json({
@@ -524,7 +489,6 @@ export const updateIssueStatus = async (req, res, next) => {
       }
     }
 
-    // Rule: Developers can update assigned issues. If a developer attempts to modify a non-assigned issue, return 403.
     if (userRole === 'developer' && issue.assignedTo !== userId) {
       return res.status(403).json({
         success: false,
@@ -532,11 +496,9 @@ export const updateIssueStatus = async (req, res, next) => {
       });
     }
 
-    // Save status
     issue.status = newStatus;
     await issue.save();
 
-    // Create log
     await ActivityLog.create({
       logId: generateLogId(),
       issueId: issue.issueId,
@@ -547,10 +509,15 @@ export const updateIssueStatus = async (req, res, next) => {
       timestamp: new Date()
     });
 
+    // Format response exactly as contract expects
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      data: issue
+      message: 'Issue status updated successfully',
+      data: {
+        issueId: issue.issueId,
+        status: issue.status,
+        updatedAt: issue.updatedAt.toISOString()
+      }
     });
   } catch (error) {
     next(error);

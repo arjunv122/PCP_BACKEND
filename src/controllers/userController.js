@@ -1,12 +1,27 @@
 import User from '../models/User.js';
 
-// Q6 -- User APIs: GET /users
+// GET /users (Supports Pagination)
 export const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select('-password');
+    const { page = 1, limit = 10 } = req.query;
+    
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const totalCount = await User.countDocuments();
+    const users = await User.find()
+      .select('-password')
+      .skip(skip)
+      .limit(limitNum);
+
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Users fetched successfully',
+      page: pageNum,
+      limit: limitNum,
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / limitNum),
       data: users
     });
   } catch (error) {
@@ -14,11 +29,10 @@ export const getAllUsers = async (req, res, next) => {
   }
 };
 
-// Q6 -- User APIs: GET /users/:id
+// GET /users/:id
 export const getUserById = async (req, res, next) => {
   try {
     const id = req.params.id;
-    // Query either by MongoDB _id or custom userId
     const user = await User.findOne({
       $or: [
         { userId: id },
@@ -35,7 +49,7 @@ export const getUserById = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'User fetched successfully',
       data: user
     });
   } catch (error) {

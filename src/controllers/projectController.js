@@ -1,8 +1,7 @@
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 
-// Q7 -- Project APIs: POST /projects
-// Authorization check (admin/manager only) will be enforced by middleware in route configuration
+// POST /projects
 export const createProject = async (req, res, next) => {
   try {
     const { projectId, title, description, owner, members, status, startDate } = req.body;
@@ -22,7 +21,6 @@ export const createProject = async (req, res, next) => {
       });
     }
 
-    // Verify owner if provided
     if (owner) {
       const ownerExists = await User.findOne({ userId: owner });
       if (!ownerExists) {
@@ -45,7 +43,7 @@ export const createProject = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Project created successfully',
       data: newProject
     });
   } catch (error) {
@@ -53,7 +51,7 @@ export const createProject = async (req, res, next) => {
   }
 };
 
-// Q7 & Q13 -- Project APIs: GET /projects with Filtering (status, owner)
+// GET /projects with Filtering
 export const getAllProjects = async (req, res, next) => {
   try {
     const { status, owner } = req.query;
@@ -64,8 +62,6 @@ export const getAllProjects = async (req, res, next) => {
     }
 
     if (owner) {
-      // The query filter might pass an owner userId (e.g. USR1004) or a user's name (e.g. Rahul)
-      // Let's check if we can resolve the name to userIds first
       const matchedUsers = await User.find({
         $or: [
           { userId: owner },
@@ -78,9 +74,12 @@ export const getAllProjects = async (req, res, next) => {
     }
 
     const projects = await Project.find(filter);
+    
+    const isFiltered = (status !== undefined || owner !== undefined);
+    
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: isFiltered ? 'Projects filtered successfully' : 'Projects fetched successfully',
       data: projects
     });
   } catch (error) {
@@ -88,7 +87,7 @@ export const getAllProjects = async (req, res, next) => {
   }
 };
 
-// Q7 -- Project APIs: GET /projects/:id
+// GET /projects/:id
 export const getProjectById = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -108,7 +107,7 @@ export const getProjectById = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Project fetched successfully',
       data: project
     });
   } catch (error) {
@@ -116,7 +115,7 @@ export const getProjectById = async (req, res, next) => {
   }
 };
 
-// Q7 -- Project APIs: PATCH /projects/:id
+// PATCH /projects/:id
 export const updateProject = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -136,7 +135,6 @@ export const updateProject = async (req, res, next) => {
 
     const updates = req.body;
     
-    // Verify owner if updated
     if (updates.owner) {
       const ownerExists = await User.findOne({ userId: updates.owner });
       if (!ownerExists) {
@@ -147,7 +145,6 @@ export const updateProject = async (req, res, next) => {
       }
     }
 
-    // Apply fields
     const fields = ['title', 'description', 'owner', 'members', 'status', 'startDate'];
     fields.forEach(field => {
       if (updates[field] !== undefined) {
@@ -163,7 +160,7 @@ export const updateProject = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
+      message: 'Project updated successfully',
       data: project
     });
   } catch (error) {
@@ -171,7 +168,7 @@ export const updateProject = async (req, res, next) => {
   }
 };
 
-// Q7 -- Project APIs: DELETE /projects/:id
+// DELETE /projects/:id
 export const deleteProject = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -189,10 +186,10 @@ export const deleteProject = async (req, res, next) => {
       });
     }
 
+    // No data block in expected response of DELETE project
     return res.status(200).json({
       success: true,
-      message: 'Operation successful',
-      data: project
+      message: 'Project deleted successfully'
     });
   } catch (error) {
     next(error);
